@@ -1,0 +1,679 @@
+#include <SPI.h>
+#include <RH_RF69.h>
+#include <RHReliableDatagram.h>
+#define LED 13
+#include <EasyTransfer.h>
+
+//====================
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_IS31FL3731.h>
+//====================
+
+EasyTransfer ET; 
+struct SEND_DATA_STRUCTURE{
+  int16_t data1;
+};
+
+//give a name to the group of data
+SEND_DATA_STRUCTURE mydata;
+
+
+//----------------------------------------Time--------------
+unsigned long CurrentMillis = 0;//
+unsigned long PreviousDisplayMillis = 0;//
+unsigned long PreviousReadMillis = 0;//
+unsigned long PreviousSendMillis = 0;//
+unsigned long PreviousShowTimeMillis = 0;//
+unsigned long PreviousHistoryMillis = 0;//
+unsigned long PreviousRadioMillis = 0;//
+unsigned long PreviousCheckMillis = 0;//
+unsigned long PreviousStanceMillis = 0;//
+unsigned long PreviousMoveMillis = 0;//
+unsigned long PreviousShowMillis = 0;//
+unsigned long PreviousLoopMillis = 0;//
+unsigned long ShowTime = 1;//
+const long DisplayInterval = 1000;//
+const long ReadInterval = 50;//
+const long SendInterval = 250; //
+const long ResetHistoryInterval = 250;// 
+const long RadioInterval = 250; //
+const long CheckInterval = 500; //
+const long StanceInterval = 100; //
+const long MoveInterval = 75;//
+const long LoopInterval = 100;//
+const long ShowInterval = 75; //
+const long ShowTimeInterval = 100;// 
+
+#define RF69_FREQ 919.0
+#define RFM69_CS      8
+#define RFM69_INT     3
+#define RFM69_RST     4
+#define MY_ADDRESS     8
+#define ResetPin        40
+
+struct dataStruct{
+byte n1;
+byte n2;
+byte n3;
+}RadioPacket;
+
+RH_RF69 rf69(RFM69_CS, RFM69_INT);
+
+RHReliableDatagram rf69_manager(rf69, MY_ADDRESS);
+
+//====================
+Adafruit_IS31FL3731 matrix = Adafruit_IS31FL3731();
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+#define SERVOMIN  150  // This is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX  600  // This is the 'maxiumu' pulse length count (out of 4096)
+
+#define ResetPin        40
+#define PeriDown         5
+#define PeriMid          6
+#define PeriUp           9
+#define SpkrDown        10
+#define SpkrMid         11
+#define SpkrUp          12
+#define SaberDown       16
+#define SaberMid        17
+#define SaberUp         18
+#define PeriPow         19
+#define SpkrPow         14
+#define SaberPow        15
+#define Relay4           1
+
+#define PANELCOUNT      16
+#define I2CADDRESS       6
+#define SERVOI2CADDRESS 0x44
+
+const int Pie1  =  0; // Light Saber Launcher port
+const int Pie2  =  1; // Life Form Scanner (LFS)
+const int Pie5  =  2; // Bad motivator
+const int Pie6  =  3; // Zapper port
+const int Pan1  =  4; // This is the pannel just to the right of the front holo projector.
+const int Pan2  =  5;
+const int Pan3  =  6;
+const int Pan4  =  7;
+// Pannel 5 is the Magic Pannel.
+// Pannel 6 is the small pannel above the Magic Panel.
+const int Pan7  =  8;
+// Pannel 8 is the rear Process State Indicator (PSI).
+// Between pannels 8 & 9 is the rear holo projector.
+// Pannel 9 is the larger Logic Display.
+const int Pan10 =  9;
+const int Pan11 = 10;
+// Pannel 12 is the small Logic Displays.
+const int Pan13 = 11;
+// To the right of pannel 13 is the front PSI.
+// To the right of the front PSI is the front holo projector.
+const int TBD1  = 12;
+const int TBD2  = 13;
+const int TBD3  = 14;
+const int TBD4  = 15;
+
+const int Pie1C  = 150; // These numbers are just guesses and will need to be set once the panel is in the dome.
+const int Pie1O  = 600; // C = Closed, O = Open, M = Midway
+const int Pie1M  = 375;
+const int Pie2C  = 150;
+const int Pie2O  = 600;
+const int Pie2M  = 375;
+const int Pie5C  = 150;
+const int Pie5O  = 600;
+const int Pie5M  = 375;
+const int Pie6C  = 150;
+const int Pie6O  = 600;
+const int Pie6M  = 375;
+const int Pan1C  = 150;
+const int Pan1O  = 600;
+const int Pan1M  = 375;
+const int Pan2C  = 150;
+const int Pan2O  = 600;
+const int Pan2M  = 375;
+const int Pan3C  = 150;
+const int Pan3O  = 600;
+const int Pan3M  = 375;
+const int Pan4C  = 150;
+const int Pan4O  = 600;
+const int Pan4M  = 375;
+const int Pan7C  = 150;
+const int Pan7O  = 600;
+const int Pan7M  = 375;
+const int Pan10C = 150;
+const int Pan10O = 600;
+const int Pan10M = 375;
+const int Pan11C = 150;
+const int Pan11O = 600;
+const int Pan11M = 375;
+const int Pan13C = 150;
+const int Pan13O = 600;
+const int Pan13M = 375;
+// const int TBD1  =  ;  // Since the To Be Determined (TBD) haven't been defined, you don't need these yet.
+// const int TBD2  =  ;
+// const int TBD3  =  ;
+// const int TBD4  =  ;
+
+uint8_t sweep[] = {1, 2, 3, 4, 6, 8, 10, 15, 20, 30, 40, 60, 60, 40, 30, 20, 15, 10, 8, 6, 4, 3, 2, 1};
+static const uint8_t PROGMEM
+  smile_bmp[] = { B00111100,B01000010,B10100101,B10000001,B10100101,B10011001,B01000010,B00111100 },
+  neutral_bmp[] = { B00111100,B01000010,B10100101,B10000001,B10111101,B10000001,B01000010,B00111100 },
+  frown_bmp[] = { B00111100,B01000010,B10100101,B10000001,B10011001,B10100101,B01000010,B00111100 };
+//====================
+
+int CurrentOrder = 0;
+int IncomingHist = 0; 
+int Show = 0;
+String Recieved;
+String Incoming1;
+String Incoming2;
+String Incoming3;
+String IncomingMsg;
+int IncomingInt;
+int LastNum;
+int CurrentNumber;
+int CurrentShow;
+int Num3Int;
+String SendPack;
+String Pack1;
+String Pack2;
+String Pack3;
+int RecInt;
+int GroupInt;
+int SendPackInt;
+
+//====================
+int     CPUOut = 0;
+int     CPUWorking = 0;
+int     ZapOut = 0;
+//====================
+
+void setup(){
+  delay(500);
+  Serial.begin(115200);
+  Serial1.begin(115200);
+ pinMode(8, INPUT_PULLUP);
+  pinMode(LED, OUTPUT);  
+  
+  ET.begin(details(mydata), &Serial1);
+  
+  pinMode(13, OUTPUT);
+  pinMode(ResetPin, OUTPUT);
+  digitalWrite(ResetPin, HIGH); //Reset Sound
+  randomSeed(analogRead(0));
+
+/*//====================
+  pinMode( PeriPow, OUTPUT);
+  pinMode( SpkrPow, OUTPUT );
+  pinMode( SaberPow, OUTPUT );
+  pinMode( Relay4, OUTPUT );
+  pinMode( PeriDown, OUTPUT );
+  pinMode( PeriMid, OUTPUT );
+  pinMode( PeriUp, OUTPUT );
+  pinMode( SpkrDown, OUTPUT );
+  pinMode( SpkrMid, OUTPUT );
+  pinMode( SpkrUp, OUTPUT );
+  pinMode( SaberDown, OUTPUT );
+  pinMode( SaberMid, OUTPUT );
+  pinMode( SaberUp, OUTPUT );
+  digitalWrite(PeriPow,HIGH);
+  digitalWrite(SpkrPow,HIGH);
+  digitalWrite(SaberPow,HIGH);
+  digitalWrite(Relay4,HIGH);
+  digitalWrite(PeriDown,HIGH);
+  digitalWrite(PeriMid,HIGH);
+  digitalWrite(PeriUp,HIGH);
+  digitalWrite(SpkrDown,HIGH);
+  digitalWrite(SpkrMid,HIGH);
+  digitalWrite(SpkrUp,HIGH);
+  digitalWrite(SaberDown,HIGH);
+  digitalWrite(SaberMid,HIGH);
+  digitalWrite(SaberUp,HIGH);
+//====================*/
+  
+  pinMode(RFM69_RST, OUTPUT);
+  digitalWrite(RFM69_RST, LOW);
+  digitalWrite(RFM69_RST, HIGH);
+  delay(10);
+  digitalWrite(RFM69_RST, LOW);
+  delay(10);
+  
+  if (!rf69.init()) {
+    Serial.println("RFM69 radio init failed");
+    while (1);
+  }
+  Serial.println("RFM69 radio init OK!");
+  
+  if (!rf69.setFrequency(RF69_FREQ)) {
+    Serial.println("setFrequency failed");
+  }
+
+  rf69.setTxPower(20, true);
+
+  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+  rf69.setEncryptionKey(key);
+  
+  Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
+RadioPacket.n1 = 0;
+RadioPacket.n2 = 0;
+RadioPacket.n3 = 0;
+
+  delay(500);
+
+/*//====================
+pwm.begin();  // If you're using multiple board, you'll do pwm1.begin(); pwm2.begin();
+  pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates.  For multiples also add in the pwm1
+  delay(10);
+//====================*/
+}
+
+//====================
+void RocketMan(){
+  if (millis() - ShowTime <= 85000) {
+    Serial.print(" Speaker Up ");
+    digitalWrite(SpkrDown,HIGH);
+    digitalWrite(SpkrMid,HIGH);
+    digitalWrite(SpkrPow, LOW);
+    delay(100);
+    digitalWrite(SpkrUp, LOW);
+    delay(100);
+    digitalWrite(SpkrUp, LOW);
+  }
+  
+  if (millis() - ShowTime >= 85000) {
+    digitalWrite(SpkrMid,HIGH);
+    digitalWrite(SpkrUp,HIGH);
+    digitalWrite(SpkrPow, LOW);
+    digitalWrite(SpkrDown,LOW);
+    delay(100);
+    digitalWrite(SpkrDown, LOW);
+  }
+  
+  if (millis() - ShowTime >= 90000) {
+    digitalWrite(SpkrDown, HIGH); 
+    digitalWrite(PeriDown, HIGH); 
+    digitalWrite(PeriPow, HIGH);
+    digitalWrite(SpkrPow, HIGH);
+  }
+  
+  if (millis() - ShowTime >= 95000) {
+    Show = 0;
+  }  
+}
+
+void FavThings(){
+  if (millis() - ShowTime <= 35000) {
+    Serial.print(" Speaker Up ");
+    digitalWrite(SpkrDown,HIGH);
+    digitalWrite(SpkrMid,HIGH);
+    digitalWrite(SpkrUp,HIGH);
+    digitalWrite(SpkrPow, LOW);
+    delay (100);
+    digitalWrite(SpkrMid, LOW);
+    delay (100);
+    digitalWrite(SpkrMid, LOW);
+  }     
+
+  if (millis() - ShowTime >= 35000) {
+    digitalWrite(SpkrMid,HIGH);
+    digitalWrite(SpkrUp,HIGH);
+    digitalWrite(SpkrPow, LOW);
+    digitalWrite(SpkrDown,LOW);
+    delay (100);
+    digitalWrite(SpkrDown, LOW);
+  }
+
+  if (millis() - ShowTime >= 40000) {
+    digitalWrite(SpkrDown, HIGH);
+    digitalWrite(PeriDown, HIGH);
+    digitalWrite(PeriPow, HIGH);
+    digitalWrite(SpkrPow, HIGH);
+  }
+  
+  if (millis() - ShowTime >= 41000) {
+    Show = 0;
+  }
+}
+
+void LedSwirl() {
+  matrix.setRotation(0);
+  
+  if(millis() - ShowTime <= 15000) {
+    Serial.print("LED Swirl");
+    for (uint8_t incr = 0; incr < 24; incr++)
+    for (uint8_t x = 0; x < 16; x++)
+    for (uint8_t y = 0; y < 9; y++)
+    matrix.drawPixel(x, y, sweep[(x+y+incr)%24]);
+    delay(20);
+  }
+
+  if(millis() - ShowTime >=15000) {
+    matrix.setRotation(0);
+    matrix.clear();
+    matrix.drawBitmap(3, 0, smile_bmp, 8, 8, 255);
+    delay(500);
+    matrix.clear();
+    matrix.drawBitmap(3, 0, neutral_bmp, 8, 8, 64);
+    delay(500);
+    matrix.clear();
+    matrix.drawBitmap(3, 0, frown_bmp, 8, 8, 32);
+    delay(500);
+    matrix.clear();
+    matrix.drawPixel(0, 0, 255);  
+    delay(500);
+    matrix.clear();
+    matrix.drawLine(0,0, matrix.width()-1, matrix.height()-1, 127);
+    delay(500);
+    matrix.clear();
+    matrix.drawRect(0,0, matrix.width(), matrix.height(), 255);
+    matrix.fillRect(2,2, matrix.width()-4, matrix.height()-4, 20);
+    delay(500);
+    matrix.clear();
+    matrix.drawCircle(8,4, 4, 64);
+    matrix.drawCircle(8,4, 2, 32);
+    delay(500);
+    matrix.setTextSize(1);
+    matrix.setTextWrap(false);  // we dont want text to wrap so it scrolls nicely
+    matrix.setTextColor(100);
+    for (int8_t x=0; x>=-32; x--) {
+      matrix.clear();
+      matrix.setCursor(x,0);
+      matrix.print("Hello");
+      delay(100);
+    }
+    matrix.setTextSize(2);
+    matrix.setTextWrap(false);  // we dont want text to wrap so it scrolls nicely
+    matrix.setTextColor(32);
+    matrix.setRotation(1);
+    for (int8_t x=7; x>=-64; x--) {
+      matrix.clear();
+      matrix.setCursor(x,0);
+      matrix.print("World");
+      delay(100);
+    }
+    matrix.clear();
+    Show = 0;
+  }  
+}
+//====================*/
+
+//----------------------------------------------Reset Sound-----------------
+void ResetSound(){
+  if ((ShowTime >= 00) && (ShowTime <= 90)); { 
+ digitalWrite(ResetPin, LOW); //Reset Sound
+ Serial.print("Reset in show ");
+  }
+   if (ShowTime >= 91 ); {
+    digitalWrite(ResetPin, HIGH); //Reset Sound 
+    Show = 0;
+    RunShows();
+   }
+}
+  
+
+//===================================================Run Shows===========================
+void RunShows(){
+switch (Show){
+
+//====================*/
+    case 71:
+    RocketMan();
+    break;
+
+    case 75:
+    FavThings();
+    break;
+
+    case 104:
+    LedSwirl();
+    break;
+//====================*/
+
+case 128:
+ResetSound();
+break;
+   default:
+  case 0:// No Show Now
+          Show = 0; 
+          break;
+}
+}
+
+void ApplyIncoming(){
+CurrentOrder = IncomingInt;
+switch(CurrentOrder){
+
+//====================*/
+case 61:
+    Serial.print(" Periscope Up ");
+    digitalWrite(PeriDown,HIGH);
+    digitalWrite(PeriMid,HIGH);
+    digitalWrite(PeriPow, LOW);
+    digitalWrite(PeriUp, LOW);
+    break;
+
+    case 65:
+    Serial.print(" Periscope Down ");
+    digitalWrite(PeriMid,HIGH);
+    digitalWrite(PeriUp,HIGH);
+    digitalWrite(PeriPow, LOW);
+    digitalWrite(PeriDown, LOW);
+    break;
+
+    case 62:
+    Serial.print(" Periscope Random ");
+    digitalWrite(PeriDown,HIGH);
+    digitalWrite(PeriUp,HIGH);
+    digitalWrite(PeriPow, LOW);
+    digitalWrite(PeriMid, LOW);
+    break;
+
+    case 63:
+    Serial.print(" Speaker Up ");
+    digitalWrite(SpkrDown,HIGH);
+    digitalWrite(SpkrMid,HIGH);
+    digitalWrite(SpkrPow, LOW);
+    digitalWrite(SpkrUp, LOW);
+    break;
+  
+    case 67:
+    Serial.print(" Speaker Down ");
+    digitalWrite(SpkrMid,HIGH);
+    digitalWrite(SpkrUp,HIGH);
+    digitalWrite(SpkrPow, LOW);
+    digitalWrite(SpkrDown, LOW);
+    break;
+
+    case 64:
+    Serial.print(" Saber Up ");
+    digitalWrite(SaberDown,HIGH);
+    digitalWrite(SaberMid,HIGH);
+    digitalWrite(SaberPow, LOW);
+    digitalWrite(SaberUp, LOW);
+    break;
+
+    case 68:
+    Serial.print(" Saber Down ");
+    digitalWrite(SaberMid,HIGH);
+    digitalWrite(SaberUp,HIGH);
+    digitalWrite(SaberPow, LOW);
+    digitalWrite(SaberDown, LOW);
+    break;
+
+    case 71:
+    ShowTime = millis();
+    Show = 71;
+    break;
+
+    case 104:
+    ShowTime = millis();
+    Show = 104;
+    break;
+    
+    case 75:
+    ShowTime = millis();
+    Show = 75;
+    break;
+
+    case 101:
+    pwm.setPWM(0, 0, Pie1O);
+    break;
+
+    case 102:
+    pwm.setPWM(0, 0, Pie1M);
+    break;
+    
+    case 103:
+    pwm.setPWM(0, 0, Pie1C);
+    break;
+
+    case 105:
+    pwm.setPWM(1, 0, Pie2M);
+    break;
+
+    case 106:
+    pwm.setPWM(2, 0, Pie5M);
+    break;
+
+    case 107:
+    pwm.setPWM(2, 0, Pie5O);
+    break;
+
+    case 108:
+    pwm.setPWM(1, 0, Pie2C);
+    break;
+//====================*/
+
+ case 128://Reset Sound
+ Show = 128;
+ RunShows();
+   break;  
+ 
+}}
+
+
+//--------------------------------------------------We Got One-----------------
+void WeGotOne(){
+//if(LastNum != IncomingInt){ 
+Serial.println("WE GOT ONE");
+CurrentNumber = IncomingInt;
+ ShowTime = 0;
+ LastNum = CurrentNumber;
+ ApplyIncoming(); 
+    
+}
+
+
+
+//-------------------------------------------------Radio-------------------------------
+void radio (){
+//   Serial.println("***************Radio**************");
+    // Dont put this on the stack:
+  uint8_t buf[sizeof(RadioPacket)];
+  uint8_t from;
+  uint8_t len = sizeof(buf);
+
+ if (rf69_manager.available()){
+      
+    // Wait for a message addressed to us from the client
+    if (rf69_manager.recvfrom(buf, &len, &from))
+    {
+    memcpy(&RadioPacket, buf, sizeof(RadioPacket));
+      if (!len) return;
+      buf[len] = 0;
+Incoming1 = String(RadioPacket.n1);
+Incoming2 = String(RadioPacket.n2);
+Incoming3 = String(RadioPacket.n3);
+
+IncomingMsg = Incoming1 + Incoming2 + Incoming3;
+
+   
+IncomingInt = IncomingMsg.toInt();   
+Num3Int = Incoming3.toInt();
+//Serial.print("Incoming3: ");
+//Serial.println(Incoming3);
+if (1 <= Num3Int && Num3Int <=8){
+WeGotOne();
+    }
+   }
+  }
+}
+
+
+
+//---------------------------------------------------Debug Radio
+void DebugRadio(){
+     Serial.print("RSSI: ");
+      Serial.println(rf69.lastRssi(), DEC);
+
+      
+      
+      Serial.print("Got message from unit: ");
+         
+      Serial.print("Switch Code");
+      Serial.print(RadioPacket.n1);
+       Serial.print(RadioPacket.n2);
+        Serial.print(RadioPacket.n3);
+        
+                  Serial.print("Incoming Message   ");
+      Serial.print(IncomingMsg);  
+      Serial.print("Incoming Int   ");
+      Serial.println(IncomingInt);
+     
+}
+
+//---------------------------------------------------Debug 
+void Debug(){
+ 
+
+}     
+
+
+
+void loop(){
+
+  Pack1 = Incoming1;
+  Pack2 = Incoming2;
+  Pack3 = Incoming3;
+  
+  SendPack = Pack1 + Pack2 + Pack3;
+  SendPackInt = (SendPack.toInt());
+  //this is how you access the variables. [name of the group].[variable name]
+  mydata.data1 = SendPackInt;
+ 
+  
+    ET.sendData();
+   CurrentMillis = millis();
+
+   if(IncomingInt != IncomingHist){
+   CurrentOrder = IncomingInt;
+    ApplyIncoming();
+    IncomingHist = IncomingInt;
+   }
+   
+    if (millis() - PreviousDisplayMillis >= DisplayInterval){
+    PreviousDisplayMillis = CurrentMillis;
+  //  DebugRadio();
+  Debug();
+    }
+   if (millis() - PreviousRadioMillis >= RadioInterval){
+    PreviousRadioMillis = CurrentMillis;
+  radio();
+ 
+    }
+   
+
+   if (millis() - PreviousLoopMillis >= LoopInterval){
+    PreviousLoopMillis = CurrentMillis;
+    RunShows();
+      }
+   if (millis() - PreviousShowTimeMillis >= ShowTimeInterval){
+            PreviousShowTimeMillis = CurrentMillis;
+            ShowTime++;
+ //   Serial.print("ShowTime  ");
+  //    Serial.println(ShowTime);        
+     }
+     
+  delay(100);
+}
